@@ -17,14 +17,17 @@ ENV VITE_PUBLIC_APP_URL=${VITE_PUBLIC_APP_URL}
 COPY package.json pnpm-lock.yaml* ./
 RUN pnpm fetch
 
-# Copy source and build
+# Copia o código-fonte
 COPY . .
-RUN pnpm install --offline --frozen-lockfile
 
-# Build the Remix app (SSR + client)
+# Força React 18 e React-DOM 18
+RUN pnpm add react@18.3.1 react-dom@18.3.1
+
+# Instala dependências e constrói
+RUN pnpm install --offline --frozen-lockfile
 RUN NODE_OPTIONS=--max-old-space-size=4096 pnpm run build
 
-# Keep only production deps
+# Mantém só dependências de produção
 RUN pnpm prune --prod --ignore-scripts
 
 
@@ -36,11 +39,11 @@ ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOST=0.0.0.0
 
-# Install curl for healthcheck
+# Instala curl para healthcheck
 RUN apt-get update && apt-get install -y --no-install-recommends curl \
   && rm -rf /var/lib/apt/lists/*
 
-# Copy only what we need
+# Copia apenas arquivos necessários
 COPY --from=build /app/build /app/build
 COPY --from=build /app/node_modules /app/node_modules
 COPY --from=build /app/package.json /app/package.json
@@ -51,5 +54,5 @@ EXPOSE 3000
 HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=5 \
   CMD curl -fsS http://localhost:3000/ || exit 1
 
-# Start the Remix server
+# Start da aplicação
 CMD ["node", "build/server/index.js"]
